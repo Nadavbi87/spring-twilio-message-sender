@@ -5,6 +5,7 @@ import com.bsmooth.springtwiliomessagesender.services.MessageSenderService;
 import com.bsmooth.springtwiliomessagesender.services.responses.MessageSenderResponse;
 import com.twilio.exception.ApiException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -23,10 +24,8 @@ public class TwilioMessageSenderServiceImpl implements MessageSenderService {
         try {
             twilioMessageSenderClient.sendSMS(to, body);
             messageSenderResponse = buildSuccessResponse();
-        }catch (ApiException ex){
-            messageSenderResponse = buildResponseFromException(ex);
         }catch (Exception e){
-            messageSenderResponse = buildGeneralErrorResponse();
+            messageSenderResponse = buildResponseFromException(e);
         }
         return messageSenderResponse;
     }
@@ -38,10 +37,8 @@ public class TwilioMessageSenderServiceImpl implements MessageSenderService {
         try {
             twilioMessageSenderClient.sendWhatsApp(to, body);
             messageSenderResponse = buildSuccessResponse();
-        }catch (ApiException ex){
-            messageSenderResponse = buildResponseFromException(ex);
         }catch (Exception e){
-            messageSenderResponse = buildGeneralErrorResponse();
+            messageSenderResponse = buildResponseFromException(e);
         }
 
         return messageSenderResponse;
@@ -54,10 +51,8 @@ public class TwilioMessageSenderServiceImpl implements MessageSenderService {
         try {
             twilioMessageSenderClient.makeVoiceCall(to, body);
             messageSenderResponse = buildSuccessResponse();
-        }catch (ApiException ex){
-            messageSenderResponse = buildResponseFromException(ex);
         }catch (Exception e){
-            messageSenderResponse = buildGeneralErrorResponse();
+            messageSenderResponse = buildResponseFromException(e);
         }
 
         return messageSenderResponse;
@@ -77,15 +72,34 @@ public class TwilioMessageSenderServiceImpl implements MessageSenderService {
         return messageSenderResponse;
     }
 
+    private MessageSenderResponse buildResponseFromException(Exception exception){
+        MessageSenderResponse messageSenderResponse = null;
+
+        if(exception != null){
+            if(exception instanceof ApiException){
+                ApiException apiException = (ApiException)exception;
+
+                if(apiException != null && apiException.getStatusCode() != null){
+                    messageSenderResponse = new MessageSenderResponse(
+                            false,
+                            apiException.getMessage(),
+                            apiException.getStatusCode());
+                }
+            }
+        }
+
+        return messageSenderResponse == null ? buildGeneralErrorResponse() : messageSenderResponse;
+    }
+
     private MessageSenderResponse buildGeneralErrorResponse(){
         return new MessageSenderResponse(false,
                 MessageConsts.GENERAL_ERROR_MESSAGE,
-                500);
+                HttpStatus.INTERNAL_SERVER_ERROR.value());
     }
 
     private MessageSenderResponse buildSuccessResponse(){
         return new MessageSenderResponse(true,
                null,
-                201);
+                HttpStatus.CREATED.value());
     }
 }
